@@ -1,40 +1,70 @@
+[README.md](https://github.com/user-attachments/files/30187789/README.md)
 # Thermostat Glass Card
 
-Frosted-Glass Thermostat-Widget im Liquid-Glass-Stil für Home Assistant (`custom:thermostat-glass-card`).
-Zeigt mehrere `climate`-Entities als Grid von Kacheln mit Plus/Minus-Steuerung und Power-Toggle.
-
-**Status:** Bisher nur als Inline-Dashboard-Ressource in HA gepflegt, kein Git-Repo. Diese Datei
-ist der Source-Stand vom 20.07.2026 (inkl. Fix: Icon-Farbe im Aus-Zustand jetzt theme-adaptiv über
-`var(--primary-text-color)` statt hartcodiertem Grau).
+A frosted-glass ("Liquid Glass") styled thermostat widget for Home Assistant
+(`custom:thermostat-glass-card`). Displays multiple `climate` entities as a grid of tiles
+with plus/minus stepper controls and a power toggle.
 
 ## Installation
 
-1. `thermostat-glass-card.js` als Lovelace-Ressource hinzufügen:
-   - Settings → Dashboards → ⋮ → Resources → Add Resource
-   - URL: z.B. `/local/thermostat-glass-card.js` (Datei nach `config/www/` kopieren)
-   - Resource type: JavaScript Module
+### HACS (custom repository)
 
-## Konfiguration
+1. HACS → the "⋮" menu (top right) → **Custom repositories**.
+2. Add this repository's URL, category **Dashboard**.
+3. Install **Thermostat Glass Card**, then add the resource if HACS doesn't do it automatically:
+   - Settings → Dashboards → Resources → **+ Add resource**
+   - URL: `/hacsfiles/liquid-glass-thermostat/thermostat-glass-card.js`
+   - Type: **JavaScript Module**
+
+### Manual
+
+1. Copy `thermostat-glass-card.js` into `<config>/www/`.
+2. Settings → Dashboards → Resources → **+ Add resource**
+   - URL: `/local/thermostat-glass-card.js`
+   - Type: **JavaScript Module**
+
+## Configuration
 
 ```yaml
 type: custom:thermostat-glass-card
-title: Thermostate
+title: Thermostats
 entities:
-  - entity: climate.thermostat_wz
-    name: Wohnzimmer
+  - entity: climate.living_room
+    name: Living Room
     icon_color: teal
-  - climate.thermostat_bz
+  - climate.bathroom
 step: 0.5
 ```
 
-| Option | Typ | Beschreibung |
+### Card-level options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `entities` | list | — | **Required.** List of `climate` entity IDs, or objects (see below) |
+| `step` | number | `0.5` | Step size per plus/minus tap |
+| `title` | string | `"Thermostats"` | Card title |
+| `show_title` | boolean | `true` | Show/hide the title |
+| `bg_opacity` | number | `0.045` | Button background opacity |
+| `blur` | number | `16` | Backdrop blur in px |
+| `saturate` | number | `160` | Backdrop saturation % |
+| `tile_shade` | number | `15` | Tile background brightness, -100 (darker) to 100 (lighter) |
+| `panel_shade` | number | `6` | Panel background brightness, -100 (darker) to 100 (lighter) |
+
+### Per-entity options (inside `entities`)
+
+| Option | Type | Description |
 |---|---|---|
-| `entities` | list | Liste aus `climate`-Entity-IDs oder Objekten (`entity`, `name`, `icon_color`, `off_temperature`, `default_on_temperature`) |
-| `step` | number | Schrittweite pro Plus/Minus-Tap (Default `0.5`) |
-| `title` | string | Card-Titel |
-| `show_title` | boolean | Titel ein-/ausblenden |
-| `tile_shade` / `panel_shade` | number | Helligkeit der Kachel-/Kasten-Hintergründe (-100 bis 100) |
+| `entity` | string (required) | Climate entity ID |
+| `name` | string | Overrides the friendly name |
+| `icon_color` | string | Named color (e.g. `teal`, `deep-orange`) or hex, used for the active-state glow/tint |
+| `off_temperature` | number | Temperature treated as "off" (defaults to the entity's `min_temp`) |
+| `default_on_temperature` | number | Temperature to restore when turning back on (default `21`) |
 
 ## License
 
-MIT (analog zu den Schwester-Karten `liquid-glass-tile-card`, `liquid-lens-navbar-card`).
+MIT.
+
+## Credits
+
+Built iteratively in conversation with Claude (Anthropic) against a real Home Assistant dashboard,
+then cleaned up for public release.
