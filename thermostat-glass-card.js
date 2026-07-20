@@ -1,7 +1,7 @@
 class ThermostatGlassCard extends HTMLElement {
   setConfig(config) {
     if (!config.entities || !Array.isArray(config.entities)) {
-      throw new Error("Bitte 'entities' als Liste von climate-Entity-IDs angeben.");
+      throw new Error("Please provide 'entities' as a list of climate entity IDs.");
     }
     this._config = config;
     this._step = config.step ?? 0.5;
@@ -24,15 +24,15 @@ class ThermostatGlassCard extends HTMLElement {
       ],
       computeLabel: (s) => {
         switch (s.name) {
-          case "tile_shade": return "Kachel-Helligkeit";
-          case "panel_shade": return "Kasten-Helligkeit";
+          case "tile_shade": return "Tile brightness";
+          case "panel_shade": return "Panel brightness";
         }
         return s.name;
       },
       computeHelper: (s) => {
         switch (s.name) {
-          case "tile_shade": return "Negativ = dunkler, positiv = heller (Hintergrund jeder einzelnen Thermostat-Kachel)";
-          case "panel_shade": return "Negativ = dunkler, positiv = heller (Hintergrund des gesamten Widget-Kastens)";
+          case "tile_shade": return "Negative = darker, positive = lighter (background of each individual thermostat tile)";
+          case "panel_shade": return "Negative = darker, positive = lighter (background of the entire widget panel)";
         }
         return "";
       },
@@ -229,7 +229,7 @@ class ThermostatGlassCard extends HTMLElement {
       const offTemp = Math.max(minTemp, offTempCfg ?? 5);
       const fallbackOn = fallbackOnCfg ?? 21;
       const isOff = target <= offTemp + 0.01;
-      const modeLabel = isOff ? "Aus" : "Heizbetrieb";
+      const modeLabel = isOff ? "Off" : "Heating";
       const sub = current != null ? (modeLabel + " &middot; " + current + "&deg;C") : modeLabel;
       const tintRgb = ThermostatGlassCard._colorRgb(iconColor);
       return { entityId, name, sub, target, isOff, tintRgb, offTemp, fallbackOn };
@@ -237,10 +237,10 @@ class ThermostatGlassCard extends HTMLElement {
 
     const showTitle = this._config.show_title !== false;
     this._root.innerHTML = `
-      ${showTitle ? `<div class="title">${ThermostatGlassCard._icon(ICON_THERMO, 16)}<span>${this._config.title || "Thermostate"}</span></div>` : ""}
+      ${showTitle ? `<div class="title">${ThermostatGlassCard._icon(ICON_THERMO, 16)}<span>${this._config.title || "Thermostats"}</span></div>` : ""}
       <div class="grid">
         ${items.map((it, i) => it.missing ? `
-          <div class="tile"><div class="sub">Entity nicht gefunden: ${it.entityId}</div></div>
+          <div class="tile"><div class="sub">Entity not found: ${it.entityId}</div></div>
         ` : `
           <div class="tile ${!it.isOff ? "active" : ""}" data-i="${i}" style="${it.tintRgb && !it.isOff ? ("--tile-tint-rgb:" + it.tintRgb + ";--tile-tint:rgb(" + it.tintRgb + ");") : ""}">
             <div class="row">
@@ -285,5 +285,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "thermostat-glass-card",
   name: "Thermostat Glass Card",
-  description: "Frosted-Glass Thermostat-Widget im Liquid-Glass-Stil.",
+  description: "Frosted-glass thermostat widget in the Liquid Glass style.",
 });
