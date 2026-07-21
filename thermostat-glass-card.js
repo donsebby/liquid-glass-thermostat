@@ -131,7 +131,7 @@ class ThermostatGlassCard extends HTMLElement {
         position:relative; width:36px; height:36px; border-radius:50%;
         background: linear-gradient(155deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.22) 45%, rgba(255,255,255,0.4) 100%);
         border:1px solid color-mix(in srgb, var(--primary-text-color, #fff) 26%, rgba(255,255,255,0.5));
-        box-shadow: inset 0 1px 1px rgba(255,255,255,0.28);
+        box-shadow: inset 0 1px 1px rgba(255,255,255,0.28), inset 2px 0 4px rgba(80,200,255,0.28), inset -2px 0 4px rgba(255,90,190,0.25);
         display:flex; align-items:center; justify-content:center;
       }
       .icon-glass svg { fill: var(--tile-tint, #9aa3ad); width:16px; height:16px; }
@@ -154,6 +154,8 @@ class ThermostatGlassCard extends HTMLElement {
         color:var(--primary-text-color, #fff);
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; user-select:none;
+        backdrop-filter: saturate(180%) brightness(1.15); -webkit-backdrop-filter: saturate(180%) brightness(1.15);
+        box-shadow: inset 1px 0 3px rgba(80,200,255,0.26), inset -1px 0 3px rgba(255,90,190,0.24);
       }
       .btn svg { fill:currentColor; }
       .btn:active { background: rgba(255,255,255,${bg * 2.2}); }
