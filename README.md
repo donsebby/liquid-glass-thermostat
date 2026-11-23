@@ -53,7 +53,7 @@ step: 0.5
 | `demand_threshold` | number | `10` | Valve opening (%) from which a tile counts as "heating" (badge and valve text light up) |
 | `frame` | boolean | `true` | `false` removes the outer glass panel (background, border, blur, padding), so the tiles sit directly on the background behind – useful inside pop-ups |
 | `glow` | boolean | `true` | `false` gives a calmer look: no tile drop shadow, active tiles get only a subtle tinted border instead of the glow, weaker icon glow |
-| `look` | string | `glass` | `solid` switches to calm solid tiles without glass, blur or glows, see *Solid look* |
+| `look` | string | theme, else `glass` | `solid` switches to calm solid tiles without glass, blur or glows, see *Solid look*. `glass` forces the glass look. Without it the theme decides (`lg-look`), otherwise glass |
 
 ### Per-entity options (inside `entities`)
 
@@ -93,14 +93,17 @@ entities:
 
 The visual editor offers it as *Stil: Glas / Solide*.
 
+The look can also come from the theme for all Liquid Glass cards at once: set `lg-look: solid` in your Home Assistant theme (CSS variable `--lg-look`, `solid` or `glass`). `look:` on a card overrides it for that card, e.g. `look: glass` keeps one card glass on a solid theme. The card re-reads the variable when the theme or dark mode changes, or when the window event `lg-theme-changed` fires.
+
 ## Theme variables
 
-Like the other Liquid Glass cards, this card reads two optional CSS variables, so one theme can align all of them:
+Like the other Liquid Glass cards, this card reads optional CSS variables, so one theme can align all of them:
 
 ```yaml
 # in your Home Assistant theme
 lg-radius: 22px                          # corner radius of the glass panel
 lg-backdrop: blur(22px) saturate(180%)   # blur/saturation behind the panel
+lg-look: solid                           # solid look for all Liquid Glass cards (card `look:` wins)
 ```
 
 Without them nothing changes. Options set on the card itself (e.g. `blur`) still win.
@@ -108,6 +111,7 @@ Without them nothing changes. Options set on the card itself (e.g. `blur`) still
 ## Changelog
 
 ### 1.3.0
+- The look can come from the theme: `lg-look: solid` (CSS variable `--lg-look`) switches the card to the solid look when it has no `look` of its own; `look: glass` / `look: solid` on the card overrides it. Re-checked on theme/dark-mode changes and on the `lg-theme-changed` window event.
 - New option `look: solid`: calm solid tiles without glass, blur or glows; tiles that are on are tinted with their colour and get a filled icon circle, flat round buttons. Uses the optional design tokens `--surface` and `--lg-tile-bg` (see *Solid look*). Without the option the card looks exactly as before.
 
 ### 1.2.1

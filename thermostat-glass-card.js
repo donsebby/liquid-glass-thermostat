@@ -22,6 +22,10 @@ class ThermostatGlassCard extends HTMLElement {
     this._demandThreshold = config.demand_threshold ?? 10;
     this._expanded = this._expanded || new Set();
     this._lastStates = null;
+    // No `look` in the config: the theme decides (--lg-look). Re-read it
+    // here too (setConfig is rare), so removing an override in the editor
+    // picks up the theme's current look right away.
+    if (!this._lookOverride() && this.isConnected) this._themeLook = ThermostatGlassCard._readThemeLook(this);
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = "";
     this._buildStyles();
@@ -47,7 +51,7 @@ class ThermostatGlassCard extends HTMLElement {
         switch (s.name) {
           case "tile_shade": return "Negative = darker, positive = lighter (background of each individual thermostat tile)";
           case "panel_shade": return "Negative = darker, positive = lighter (background of the entire widget panel)";
-          case "look": return "Solide: calm solid tiles without glass, blur or glows (brightness sliders have no effect)";
+          case "look": return "Empty = from the theme (lg-look), otherwise glass. Solide: calm solid tiles without glass, blur or glows (brightness sliders have no effect)";
         }
         return "";
       },
@@ -69,6 +73,15 @@ class ThermostatGlassCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._config) return;
+    // Theme switch (new themes object, other theme or dark mode): the
+    // theme's --lg-look may have changed. Only then - never per tick.
+    const th = hass && hass.themes;
+    if (th !== this._themesRef || th?.theme !== this._themeName || th?.darkMode !== this._darkMode) {
+      this._themesRef = th;
+      this._themeName = th?.theme;
+      this._darkMode = th?.darkMode;
+      this._recheckThemeLook();
+    }
     // HA calls this on every state change anywhere; rebuilding the tiles
     // (and their listeners) only makes sense when one of ours changed.
     const ids = this._watchedIds();
@@ -76,6 +89,61 @@ class ThermostatGlassCard extends HTMLElement {
     if (!changed) return;
     this._lastStates = ids.map((id) => hass.states[id]);
     this._render();
+  }
+
+  // ---- look from the theme ---------------------------------------------
+  // `look: solid | glass` in the card config wins. Without it the theme
+  // decides for all Liquid Glass cards at once through the CSS variable
+  // --lg-look (theme YAML: `lg-look: solid`); without that it's glass.
+  // Read on connect (plus one frame later), on a hass.themes change and on
+  // the window event `lg-theme-changed` - never on every hass tick.
+  connectedCallback() {
+    if (!this._onThemeChanged) this._onThemeChanged = () => this._checkThemeLook();
+    window.addEventListener("lg-theme-changed", this._onThemeChanged);
+    this._recheckThemeLook();
+  }
+
+  disconnectedCallback() {
+    if (this._onThemeChanged) window.removeEventListener("lg-theme-changed", this._onThemeChanged);
+    if (this._lookRaf) cancelAnimationFrame(this._lookRaf);
+    this._lookRaf = null;
+  }
+
+  static _readThemeLook(el) {
+    try {
+      const v = getComputedStyle(el).getPropertyValue("--lg-look")
+        .trim().replace(/^["']|["']$/g, "").trim().toLowerCase();
+      return v === "solid" || v === "glass" ? v : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _lookOverride() {
+    const look = this._config && this._config.look;
+    return look === "solid" || look === "glass" ? look : null;
+  }
+
+  _isSolid() {
+    return (this._lookOverride() || this._themeLook || "glass") === "solid";
+  }
+
+  _recheckThemeLook() {
+    this._checkThemeLook();
+    if (typeof requestAnimationFrame !== "function" || this._lookRaf) return;
+    this._lookRaf = requestAnimationFrame(() => {
+      this._lookRaf = null;
+      this._checkThemeLook();
+    });
+  }
+
+  _checkThemeLook() {
+    if (!this._config || this._lookOverride() || !this.isConnected) return;
+    const look = ThermostatGlassCard._readThemeLook(this);
+    if (look === this._themeLook) return;
+    this._themeLook = look;
+    // Only CSS depends on the look here, so the class is enough.
+    if (this._root) this._root.classList.toggle("solid", this._isSolid());
   }
 
   getCardSize() {
@@ -325,8 +393,9 @@ class ThermostatGlassCard extends HTMLElement {
     this._root.className = "wrap"
       + (this._config.frame === false ? " frameless" : "")
       + (this._config.glow === false ? " calm" : "")
-      // look: solid is opt-in; anything else keeps the glass look untouched.
-      + (this._config.look === "solid" ? " solid" : "");
+      // look: solid is opt-in (config `look`, else the theme's --lg-look);
+      // anything else keeps the glass look untouched.
+      + (this._isSolid() ? " solid" : "");
     this.shadowRoot.appendChild(this._root);
   }
 
