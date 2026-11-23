@@ -139,15 +139,18 @@ class ThermostatGlassCard extends HTMLElement {
     const tileBg = this._config.tile_shade != null
       ? ThermostatGlassCard._shadeCss(this._tileShade, 0.3, 0.5)
       : "color-mix(in srgb, var(--primary-text-color, #fff) 9%, transparent)";
+    // Card options win; otherwise a theme can set --lg-backdrop for all glass cards.
+    const ownBackdrop = `blur(${blur}px) saturate(${sat}%)`;
+    const backdrop = this._config.blur != null || this._config.saturate != null ? ownBackdrop : `var(--lg-backdrop, ${ownBackdrop})`;
     const style = document.createElement("style");
     style.textContent = `
       :host { display:block; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
       .wrap {
         padding:16px;
-        border-radius:20px;
+        border-radius:var(--lg-radius, 20px);
         background: ${panelBg};
-        backdrop-filter: blur(${blur}px) saturate(${sat}%);
-        -webkit-backdrop-filter: blur(${blur}px) saturate(${sat}%);
+        backdrop-filter: ${backdrop};
+        -webkit-backdrop-filter: ${backdrop};
         border: 1px solid rgba(255,255,255,0.05);
       }
       .title { display:flex; align-items:center; gap:8px; color:var(--secondary-text-color, rgba(255,255,255,0.7)); font-size:14px; font-weight:600; margin-bottom:12px; }

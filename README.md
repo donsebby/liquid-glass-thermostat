@@ -68,9 +68,22 @@ step: 0.5
 | `reset_label` | string | Chip label (default `↺ Plan` / `↺ Schedule`) |
 | `window_prefix` | string | Status text prefix shown in blue (default `Fenster` / `Window`) |
 
+## Theme variables
+
+Like the other Liquid Glass cards, this card reads two optional CSS variables, so one theme can align all of them:
+
+```yaml
+# in your Home Assistant theme
+lg-radius: 22px                          # corner radius of the glass panel
+lg-backdrop: blur(22px) saturate(180%)   # blur/saturation behind the panel
+```
+
+Without them nothing changes. Options set on the card itself (e.g. `blur`) still win.
+
 ## Changelog
 
 ### 1.1.0
+- Reads the optional theme variables `--lg-radius` and `--lg-backdrop` (see *Theme variables*).
 - Valve opening per tile ("Valve 64 %"), from `demand_entity` or the Zigbee2MQTT `_pi_heating_demand` sensor; `demand_threshold` decides when a tile counts as heating.
 - Optional status line (`status_entity`) with a reset chip for manual overrides (`reset_when`, `reset_action`, `reset_label`) and blue window hints (`window_prefix`).
 - Power button restores the last target temperature instead of a fixed value.
