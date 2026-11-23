@@ -4,6 +4,8 @@ A frosted-glass ("Liquid Glass") styled thermostat widget for Home Assistant
 (`custom:thermostat-glass-card`). Displays multiple `climate` entities as a grid of tiles
 with plus/minus stepper controls and a power toggle.
 
+![Thermostat Glass Card with valve opening, status line and power toggle](asset/thermostat-glass-card.png)
+
 ## Installation
 
 ### HACS (custom repository)
@@ -48,6 +50,7 @@ step: 0.5
 | `saturate` | number | `160` | Backdrop saturation % |
 | `tile_shade` | number | `15` | Tile background brightness, -100 (darker) to 100 (lighter) |
 | `panel_shade` | number | `6` | Panel background brightness, -100 (darker) to 100 (lighter) |
+| `demand_threshold` | number | `10` | Valve opening (%) from which a tile counts as "heating" (badge and valve text light up) |
 
 ### Per-entity options (inside `entities`)
 
@@ -57,7 +60,23 @@ step: 0.5
 | `name` | string | Overrides the friendly name |
 | `icon_color` | string | Named color (e.g. `teal`, `deep-orange`) or hex, used for the active-state glow/tint |
 | `off_temperature` | number | Temperature treated as "off" (defaults to the entity's `min_temp`) |
-| `default_on_temperature` | number | Temperature to restore when turning back on (default `21`) |
+| `default_on_temperature` | number | Fallback when turning back on. The power button normally restores the last target this browser saw before switching off (default `21`) |
+| `demand_entity` | string | Valve-opening sensor in %. Defaults to `sensor.<climate_object_id>_pi_heating_demand` (e.g. Danfoss Ally via Zigbee2MQTT); without one the tile just shows "Heating"/"Off" |
+| `status_entity` | string | Optional status line under the tile (2 lines, tap to expand) |
+| `reset_when` | string | Status text prefix that marks a manual override (default `Manuell` / `Manual` by HA language); highlighted and offers a reset chip |
+| `reset_action` | object | Action for the reset chip, e.g. `{ action: script.resume_schedule, data: {...} }` |
+| `reset_label` | string | Chip label (default `↺ Plan` / `↺ Schedule`) |
+| `window_prefix` | string | Status text prefix shown in blue (default `Fenster` / `Window`) |
+
+## Changelog
+
+### 1.1.0
+- Valve opening per tile ("Valve 64 %"), from `demand_entity` or the Zigbee2MQTT `_pi_heating_demand` sensor; `demand_threshold` decides when a tile counts as heating.
+- Optional status line (`status_entity`) with a reset chip for manual overrides (`reset_when`, `reset_action`, `reset_label`) and blue window hints (`window_prefix`).
+- Power button restores the last target temperature instead of a fixed value.
+- Texts follow the Home Assistant language (German/English).
+- Fixed: `tile_shade` had no effect.
+- Only re-renders when one of the card's own entities changes; names and texts are HTML-escaped.
 
 ## License
 

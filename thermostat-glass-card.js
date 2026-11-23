@@ -1,3 +1,12 @@
+const CARD_VERSION = "1.1.0";
+// eslint-disable-next-line no-console
+console.info(`%c THERMOSTAT-GLASS-CARD %c v${CARD_VERSION} `, "color: white; background: #e2835a; font-weight: 700;", "color: #e2835a; background: white; font-weight: 700;");
+
+const TGC_TEXT = {
+  de: { title: "Thermostate", off: "Aus", heating: "Heizt", valveClosed: "Ventil zu", valve: "Ventil", notFound: "Entität nicht gefunden: ", manual: "Manuell", window: "Fenster", reset: "↺ Plan" },
+  en: { title: "Thermostats", off: "Off", heating: "Heating", valveClosed: "Valve closed", valve: "Valve", notFound: "Entity not found: ", manual: "Manual", window: "Window", reset: "↺ Schedule" },
+};
+
 class ThermostatGlassCard extends HTMLElement {
   setConfig(config) {
     if (!config.entities || !Array.isArray(config.entities)) {
@@ -10,6 +19,9 @@ class ThermostatGlassCard extends HTMLElement {
     this._saturate = config.saturate ?? 160;
     this._tileShade = config.tile_shade ?? 15;
     this._panelShade = config.panel_shade ?? 6;
+    this._demandThreshold = config.demand_threshold ?? 10;
+    this._expanded = this._expanded || new Set();
+    this._lastStates = null;
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = "";
     this._buildStyles();
@@ -39,13 +51,37 @@ class ThermostatGlassCard extends HTMLElement {
     };
   }
 
+  // Every entity this card reads: the climate entities plus their optional
+  // valve-demand and status sensors.
+  _watchedIds() {
+    const ids = [];
+    for (const item of this._config.entities) {
+      const entityId = typeof item === "string" ? item : item.entity;
+      ids.push(entityId, this._demandId(item, entityId));
+      if (typeof item !== "string" && item.status_entity) ids.push(item.status_entity);
+    }
+    return ids;
+  }
+
   set hass(hass) {
     this._hass = hass;
+    if (!this._config) return;
+    // HA calls this on every state change anywhere; rebuilding the tiles
+    // (and their listeners) only makes sense when one of ours changed.
+    const ids = this._watchedIds();
+    const changed = !this._lastStates || ids.some((id, i) => hass.states[id] !== this._lastStates[i]);
+    if (!changed) return;
+    this._lastStates = ids.map((id) => hass.states[id]);
     this._render();
   }
 
   getCardSize() {
     return Math.ceil((this._config?.entities?.length || 1) / 2) * 2 + 1;
+  }
+
+  _t(key) {
+    const lang = String((this._hass && ((this._hass.locale && this._hass.locale.language) || this._hass.language)) || "en");
+    return (lang.startsWith("de") ? TGC_TEXT.de : TGC_TEXT.en)[key];
   }
 
   static _shadeCss(value, maxWhite, maxBlack) {
@@ -56,6 +92,10 @@ class ThermostatGlassCard extends HTMLElement {
 
   static _icon(path, size) {
     return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '"><path d="' + path + '"/></svg>';
+  }
+
+  static _esc(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   static _colorRgb(name) {
@@ -94,7 +134,11 @@ class ThermostatGlassCard extends HTMLElement {
     const sat = this._saturate;
     const bg = this._bgOpacity;
     const panelBg = ThermostatGlassCard._shadeCss(this._panelShade, 0.3, 0.5);
-    const tileBg = ThermostatGlassCard._shadeCss(this._tileShade, 0.3, 0.5);
+    // tile_shade only overrides the tile background when set explicitly, so
+    // the default look (a tint of the theme's text color) stays unchanged.
+    const tileBg = this._config.tile_shade != null
+      ? ThermostatGlassCard._shadeCss(this._tileShade, 0.3, 0.5)
+      : "color-mix(in srgb, var(--primary-text-color, #fff) 9%, transparent)";
     const style = document.createElement("style");
     style.textContent = `
       :host { display:block; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
@@ -111,7 +155,7 @@ class ThermostatGlassCard extends HTMLElement {
       .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
       .tile {
         position:relative;
-        background: color-mix(in srgb, var(--primary-text-color, #fff) 9%, transparent);
+        background: ${tileBg};
         border-radius:16px;
         padding:10px;
         min-width:0;
@@ -146,6 +190,7 @@ class ThermostatGlassCard extends HTMLElement {
       .badge.heat svg { fill: var(--tile-tint, #9aa3ad); }
       .name { color:var(--primary-text-color, #fff); font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .sub { color:var(--secondary-text-color, rgba(255,255,255,0.5)); font-size:10.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .sub .valve-open { color: var(--tile-tint, var(--primary-text-color, #fff)); font-weight:600; }
       .controls { display:flex; align-items:center; justify-content:space-between; gap:2px; }
       .btn {
         width:26px; height:26px; border-radius:50%; flex:0 0 auto;
@@ -161,6 +206,26 @@ class ThermostatGlassCard extends HTMLElement {
       .btn:active { background: rgba(255,255,255,${bg * 2.2}); }
       .btn.power.active svg { fill: var(--tile-tint, #9aa3ad); }
       .temp { color:var(--primary-text-color, #fff); font-size:14px; font-weight:600; }
+      .status {
+        margin-top:8px; padding-top:7px;
+        border-top:1px solid color-mix(in srgb, var(--primary-text-color, #fff) 10%, transparent);
+        display:flex; align-items:center; justify-content:space-between; gap:6px;
+        color:var(--secondary-text-color, rgba(255,255,255,0.55));
+        font-size:10.5px; line-height:1.3;
+      }
+      .status .txt { min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+      .status.expanded { align-items:flex-start; }
+      .status.expanded .txt { display:block; -webkit-line-clamp:unset; overflow:visible; }
+      .status.manual .txt { color: var(--tile-tint, var(--primary-text-color, #fff)); font-weight:600; }
+      .status.window .txt { color: rgb(100,170,230); font-weight:600; }
+      .status .reset {
+        flex:0 0 auto; padding:3px 9px; border-radius:11px; cursor:pointer; user-select:none;
+        font-weight:600; font-size:10.5px; color:var(--primary-text-color, #fff);
+        background: rgba(255,255,255,${bg * 2.2});
+        border:1px solid rgba(255,255,255,0.12);
+        box-shadow: inset 1px 0 3px rgba(80,200,255,0.26), inset -1px 0 3px rgba(255,90,190,0.24);
+      }
+      .status .reset:active { background: rgba(255,255,255,${bg * 3.5}); }
     `;
     this.shadowRoot.appendChild(style);
     this._root = document.createElement("div");
@@ -170,6 +235,13 @@ class ThermostatGlassCard extends HTMLElement {
 
   _setTemp(entityId, temp) {
     this._hass.callService("climate", "set_temperature", { entity_id: entityId, temperature: temp });
+  }
+
+  _callAction(cfg) {
+    if (!cfg || !cfg.action) return;
+    const parts = String(cfg.action).split(".");
+    if (parts.length !== 2) return;
+    this._hass.callService(parts[0], parts[1], cfg.data || {});
   }
 
   static _lastTempKey(entityId) {
@@ -190,6 +262,8 @@ class ThermostatGlassCard extends HTMLElement {
     }
   }
 
+  // Power button: "off" = setting the off temperature. Turning back on
+  // restores the last target this browser saw before switching off.
   _togglePower(entityId, target, offTemp, fallbackOn) {
     const isOff = target <= offTemp + 0.01;
     if (isOff) {
@@ -209,8 +283,40 @@ class ThermostatGlassCard extends HTMLElement {
     }));
   }
 
+  // Valve opening sensor: item.demand_entity if configured, otherwise
+  // sensor.<climate_object_id>_pi_heating_demand (e.g. Danfoss Ally via
+  // Zigbee2MQTT). If the entity doesn't exist the valve display is skipped.
+  _demandId(item, entityId) {
+    const cfg = typeof item === "string" ? null : item.demand_entity;
+    return cfg || ("sensor." + entityId.split(".")[1] + "_pi_heating_demand");
+  }
+
+  _demand(item, entityId) {
+    const st = this._hass.states[this._demandId(item, entityId)];
+    return st ? parseFloat(st.state) : NaN;
+  }
+
+  // Optional status line per entity (status_entity). Text starting with
+  // reset_when (default "Manuell"/"Manual") shows the reset chip, which runs
+  // reset_action; text starting with window_prefix ("Fenster"/"Window") is
+  // shown in blue. Tapping the text toggles between 2 lines and full text.
+  _status(item) {
+    if (typeof item === "string" || !item.status_entity) return null;
+    const st = this._hass.states[item.status_entity];
+    if (!st || st.state === "unavailable" || st.state === "unknown") return null;
+    const text = st.state;
+    const resetWhen = item.reset_when ?? this._t("manual");
+    const windowPrefix = item.window_prefix ?? this._t("window");
+    const canReset = !!item.reset_action && text.startsWith(resetWhen);
+    let cls = "";
+    if (text.startsWith(resetWhen)) cls = "manual";
+    else if (text.startsWith(windowPrefix)) cls = "window";
+    return { text, cls, canReset, resetAction: item.reset_action, resetLabel: item.reset_label ?? this._t("reset") };
+  }
+
   _render() {
     if (!this._hass || !this._config) return;
+    const esc = ThermostatGlassCard._esc;
     const step = this._step;
     const ICON_THERMO = "M15,13V5A3,3 0 0,0 12,2A3,3 0 0,0 9,5V13A5,5 0 1,0 15,13M12,4A1,1 0 0,1 13,5V13.5L13.5,13.83A3,3 0 1,1 10.5,13.83L11,13.5V5A1,1 0 0,1 12,4Z";
     const ICON_MINUS = "M19,13H5V11H19V13Z";
@@ -231,37 +337,51 @@ class ThermostatGlassCard extends HTMLElement {
       const offTemp = Math.max(minTemp, offTempCfg ?? 5);
       const fallbackOn = fallbackOnCfg ?? 21;
       const isOff = target <= offTemp + 0.01;
-      const modeLabel = isOff ? "Off" : "Heating";
-      const sub = current != null ? (modeLabel + " &middot; " + current + "&deg;C") : modeLabel;
+      const demand = this._demand(item, entityId);
+      const hasDemand = Number.isFinite(demand);
+      const valveOpen = !isOff && (hasDemand ? demand >= this._demandThreshold : true);
+      let modeLabel;
+      if (isOff) modeLabel = esc(this._t("off"));
+      else if (!hasDemand) modeLabel = esc(this._t("heating"));
+      else if (demand <= 0) modeLabel = esc(this._t("valveClosed"));
+      else modeLabel = '<span class="' + (valveOpen ? "valve-open" : "") + '">' + esc(this._t("valve")) + " " + Math.round(demand) + " %</span>";
+      const sub = current != null ? (modeLabel + " &middot; " + esc(current) + "&deg;C") : modeLabel;
       const tintRgb = ThermostatGlassCard._colorRgb(iconColor);
-      return { entityId, name, sub, target, isOff, tintRgb, offTemp, fallbackOn };
+      const status = this._status(item);
+      return { entityId, name, sub, target, isOff, valveOpen, tintRgb, offTemp, fallbackOn, status };
     });
 
     const showTitle = this._config.show_title !== false;
     this._root.innerHTML = `
-      ${showTitle ? `<div class="title">${ThermostatGlassCard._icon(ICON_THERMO, 16)}<span>${this._config.title || "Thermostats"}</span></div>` : ""}
+      ${showTitle ? `<div class="title">${ThermostatGlassCard._icon(ICON_THERMO, 16)}<span>${esc(this._config.title || this._t("title"))}</span></div>` : ""}
       <div class="grid">
         ${items.map((it, i) => it.missing ? `
-          <div class="tile"><div class="sub">Entity not found: ${it.entityId}</div></div>
+          <div class="tile"><div class="sub">${esc(this._t("notFound") + it.entityId)}</div></div>
         ` : `
           <div class="tile ${!it.isOff ? "active" : ""}" data-i="${i}" style="${it.tintRgb && !it.isOff ? ("--tile-tint-rgb:" + it.tintRgb + ";--tile-tint:rgb(" + it.tintRgb + ");") : ""}">
             <div class="row">
               <div class="icon-wrap">
                 <div class="icon-glow ${it.isOff ? "off" : ""}"></div>
                 <div class="icon-glass ${it.isOff ? "off" : ""}">${ThermostatGlassCard._icon(ICON_THERMO, 16)}</div>
-                <div class="badge ${it.isOff ? "" : "heat"}">${ThermostatGlassCard._icon(ICON_POWER, 8)}</div>
+                <div class="badge ${it.valveOpen ? "heat" : ""}">${ThermostatGlassCard._icon(ICON_POWER, 8)}</div>
               </div>
               <div>
-                <div class="name">${it.name}</div>
+                <div class="name">${esc(it.name)}</div>
                 <div class="sub">${it.sub}</div>
               </div>
             </div>
             <div class="controls">
               <div class="btn minus">${ThermostatGlassCard._icon(ICON_MINUS, 12)}</div>
-              <div class="temp">${it.target.toFixed(1)}</div>
+              <div class="temp">${Number(it.target).toFixed(1)}</div>
               <div class="btn plus">${ThermostatGlassCard._icon(ICON_PLUS, 12)}</div>
               <div class="btn power ${it.isOff ? "" : "active"}">${ThermostatGlassCard._icon(ICON_POWER, 13)}</div>
             </div>
+            ${it.status ? `
+              <div class="status ${it.status.cls} ${this._expanded.has(it.entityId) ? "expanded" : ""}">
+                <span class="txt" title="${esc(it.status.text)}">${esc(it.status.text)}</span>
+                ${it.status.canReset ? `<span class="reset">${esc(it.status.resetLabel)}</span>` : ""}
+              </div>
+            ` : ""}
           </div>
         `).join("")}
       </div>
@@ -276,6 +396,15 @@ class ThermostatGlassCard extends HTMLElement {
         ev.stopPropagation();
         this._togglePower(it.entityId, it.target, it.offTemp, it.fallbackOn);
       });
+      const txt = tile.querySelector(".status .txt");
+      if (txt) txt.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (this._expanded.has(it.entityId)) this._expanded.delete(it.entityId);
+        else this._expanded.add(it.entityId);
+        this._render();
+      });
+      const reset = tile.querySelector(".reset");
+      if (reset) reset.addEventListener("click", (ev) => { ev.stopPropagation(); this._callAction(it.status.resetAction); });
       tile.addEventListener("click", () => this._moreInfo(it.entityId));
     });
   }
@@ -287,5 +416,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "thermostat-glass-card",
   name: "Thermostat Glass Card",
-  description: "Frosted-glass thermostat widget in the Liquid Glass style.",
+  description: "Frosted-glass thermostat widget in the Liquid Glass style, with valve opening, status line and power toggle.",
 });
