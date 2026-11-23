@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.2.1-dev";
+const CARD_VERSION = "1.3.0-dev";
 // eslint-disable-next-line no-console
 console.info(`%c THERMOSTAT-GLASS-CARD %c v${CARD_VERSION} `, "color: white; background: #e2835a; font-weight: 700;", "color: #e2835a; background: white; font-weight: 700;");
 
@@ -33,11 +33,13 @@ class ThermostatGlassCard extends HTMLElement {
       schema: [
         { name: "tile_shade", selector: { number: { min: -100, max: 100, step: 5, mode: "slider", unit_of_measurement: "%" } } },
         { name: "panel_shade", selector: { number: { min: -100, max: 100, step: 5, mode: "slider", unit_of_measurement: "%" } } },
+        { name: "look", selector: { select: { mode: "dropdown", options: [{ value: "glass", label: "Glas" }, { value: "solid", label: "Solide" }] } } },
       ],
       computeLabel: (s) => {
         switch (s.name) {
           case "tile_shade": return "Tile brightness";
           case "panel_shade": return "Panel brightness";
+          case "look": return "Stil";
         }
         return s.name;
       },
@@ -45,6 +47,7 @@ class ThermostatGlassCard extends HTMLElement {
         switch (s.name) {
           case "tile_shade": return "Negative = darker, positive = lighter (background of each individual thermostat tile)";
           case "panel_shade": return "Negative = darker, positive = lighter (background of the entire widget panel)";
+          case "look": return "Solide: calm solid tiles without glass, blur or glows (brightness sliders have no effect)";
         }
         return "";
       },
@@ -246,12 +249,84 @@ class ThermostatGlassCard extends HTMLElement {
         box-shadow: inset 1px 0 3px rgba(80,200,255,0.26), inset -1px 0 3px rgba(255,90,190,0.24);
       }
       .status .reset:active { background: rgba(255,255,255,${bg * 3.5}); }
+      /* look: solid - calm solid surfaces instead of glass: no blur, no
+         gradients, no cyan/pink inner edges, no glows (whatever glow says).
+         Off tiles stay neutral; an on tile is tinted with its colour and
+         its icon circle is filled with it. --c is the tile's icon_color,
+         or a warm orange when none is set. Only applies with .solid, the
+         glass rules above stay untouched. */
+      .wrap.solid { --tgc-ink: var(--primary-text-color, #fff);
+        --tgc-tile: var(--lg-tile-bg, color-mix(in srgb, var(--tgc-ink) 8%, transparent)); }
+      .wrap.solid:not(.frameless) {
+        padding:16px; border-radius:var(--lg-radius, 20px);
+        background: var(--surface, color-mix(in srgb, var(--card-background-color, #1c1f28) 88%, transparent));
+        backdrop-filter:none; -webkit-backdrop-filter:none;
+        border:1px solid rgba(255,255,255,0.06); box-shadow:none;
+      }
+      .wrap.solid .title { font-size:15px; font-weight:600; }
+      .wrap.solid .title svg { opacity:1; }
+      .wrap.solid .tile {
+        --c: var(--tile-tint, #e2835a);
+        background: var(--tgc-tile);
+        border:1px solid rgba(255,255,255,0.04); border-radius:calc(var(--lg-radius, 20px) - 4px);
+        padding:12px 10px; box-shadow:none; transition: background .2s ease;
+      }
+      .wrap.solid .tile.active { border:1px solid rgba(255,255,255,0.04); box-shadow:none;
+        background: color-mix(in srgb, var(--c) 20%, var(--tgc-tile)); }
+      .wrap.solid .row { gap:10px; }
+      .wrap.solid .icon-glow { display:none; }
+      .wrap.solid .icon-glass { border:none; box-shadow:none; background: var(--c); transition: background .2s ease; }
+      .wrap.solid .icon-glass svg { fill:#16181d; width:20px; height:20px; }
+      .wrap.solid .icon-glass.off { background: color-mix(in srgb, var(--tgc-ink) 10%, transparent); }
+      .wrap.solid .icon-glass.off svg { fill: var(--secondary-text-color, rgba(255,255,255,0.6)); }
+      .wrap.solid .badge { background: var(--surface, #1c1f28); border:1px solid rgba(255,255,255,0.06); }
+      .wrap.solid .badge svg { fill: var(--secondary-text-color, rgba(255,255,255,0.6)); }
+      .wrap.solid .badge.heat svg { fill: var(--c); }
+      .wrap.solid .name { font-size:15px; font-weight:600; }
+      .wrap.solid .sub { font-size:13px; }
+      .wrap.solid .sub .valve-open { color: color-mix(in srgb, var(--c) 55%, var(--tgc-ink)); }
+      .wrap.solid .controls { margin-top:2px; container-type:inline-size; }
+      .wrap.solid .btn {
+        position:relative; width:32px; height:32px; border-radius:999px;
+        background: color-mix(in srgb, var(--tgc-ink) 14%, transparent);
+        border:none; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none;
+        transition: background .15s ease;
+      }
+      /* invisible hit area: 44px tall without touching the neighbours */
+      .wrap.solid .btn::after { content:""; position:absolute; inset:-6px 0; }
+      .wrap.solid .btn:active { background: color-mix(in srgb, var(--tgc-ink) 24%, transparent); }
+      .wrap.solid .btn svg { width:16px; height:16px; }
+      .wrap.solid .btn.power.active svg { fill: var(--c); }
+      .wrap.solid .temp { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+      .wrap.solid .status { font-size:13px; border-top-color: color-mix(in srgb, var(--tgc-ink) 8%, transparent); }
+      .wrap.solid .status.manual .txt { color: color-mix(in srgb, var(--c) 55%, var(--tgc-ink)); }
+      .wrap.solid .status .reset {
+        position:relative; padding:4px 10px; border-radius:999px; font-size:13px; font-weight:500;
+        background: color-mix(in srgb, var(--tgc-ink) 14%, transparent);
+        border:none; box-shadow:none; transition: background .15s ease;
+      }
+      .wrap.solid .status .reset::after { content:""; position:absolute; inset:-10px 0; }
+      .wrap.solid .status .reset:active { background: color-mix(in srgb, var(--tgc-ink) 24%, transparent); }
+      /* narrow tiles (small phones): smaller buttons, same 44px tap height */
+      @container (max-width: 136px) {
+        .wrap.solid .btn { width:28px; height:28px; }
+        .wrap.solid .btn::after { inset:-8px 0; }
+      }
+      @container (max-width: 124px) {
+        .wrap.solid .btn { width:26px; height:26px; }
+        .wrap.solid .btn::after { inset:-9px 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .wrap.solid .tile, .wrap.solid .icon-glass, .wrap.solid .btn, .wrap.solid .status .reset { transition:none; }
+      }
     `;
     this.shadowRoot.appendChild(style);
     this._root = document.createElement("div");
     this._root.className = "wrap"
       + (this._config.frame === false ? " frameless" : "")
-      + (this._config.glow === false ? " calm" : "");
+      + (this._config.glow === false ? " calm" : "")
+      // look: solid is opt-in; anything else keeps the glass look untouched.
+      + (this._config.look === "solid" ? " solid" : "");
     this.shadowRoot.appendChild(this._root);
   }
 
