@@ -84,6 +84,9 @@ Without them nothing changes. Options set on the card itself (e.g. `blur`) still
 
 ## Changelog
 
+### 1.2.1
+- Without a valve sensor the tile now shows the thermostat's own `hvac_action` as Home Assistant translates it (e.g. "Heizen", "Leerlauf") instead of always "Heating". Thermostats that report neither show a neutral "On"; the heat badge then stays dark instead of claiming the valve is open.
+
 ### 1.2.0
 - New option `frame: false`: no outer panel, the tiles sit directly on the background (e.g. inside pop-ups).
 - New option `glow: false`: calm look without drop shadows and glows; active tiles only get a subtle tinted border.

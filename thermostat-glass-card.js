@@ -1,10 +1,10 @@
-const CARD_VERSION = "1.2.0";
+const CARD_VERSION = "1.2.1";
 // eslint-disable-next-line no-console
 console.info(`%c THERMOSTAT-GLASS-CARD %c v${CARD_VERSION} `, "color: white; background: #e2835a; font-weight: 700;", "color: #e2835a; background: white; font-weight: 700;");
 
 const TGC_TEXT = {
-  de: { title: "Thermostate", off: "Aus", heating: "Heizt", valveClosed: "Ventil zu", valve: "Ventil", notFound: "Entität nicht gefunden: ", manual: "Manuell", window: "Fenster", reset: "↺ Plan" },
-  en: { title: "Thermostats", off: "Off", heating: "Heating", valveClosed: "Valve closed", valve: "Valve", notFound: "Entity not found: ", manual: "Manual", window: "Window", reset: "↺ Schedule" },
+  de: { title: "Thermostate", off: "Aus", heating: "Heizt", on: "An", valveClosed: "Ventil zu", valve: "Ventil", notFound: "Entität nicht gefunden: ", manual: "Manuell", window: "Fenster", reset: "↺ Plan" },
+  en: { title: "Thermostats", off: "Off", heating: "Heating", on: "On", valveClosed: "Valve closed", valve: "Valve", notFound: "Entity not found: ", manual: "Manual", window: "Window", reset: "↺ Schedule" },
 };
 
 class ThermostatGlassCard extends HTMLElement {
@@ -313,6 +313,18 @@ class ThermostatGlassCard extends HTMLElement {
     return cfg || ("sensor." + entityId.split(".")[1] + "_pi_heating_demand");
   }
 
+  // hvac_action as Home Assistant translates it ("Heizen", "Leerlauf" ...).
+  _actionText(stateObj) {
+    const a = stateObj.attributes.hvac_action;
+    if (this._hass && typeof this._hass.formatEntityAttributeValue === "function") {
+      try {
+        const t = this._hass.formatEntityAttributeValue(stateObj, "hvac_action");
+        if (t) return String(t);
+      } catch (e) { /* fall through */ }
+    }
+    return a === "heating" ? this._t("heating") : a === "off" ? this._t("off") : String(a);
+  }
+
   _num(value, fixed) {
     const n = Number(value);
     if (!Number.isFinite(n)) return String(value);
@@ -384,10 +396,12 @@ class ThermostatGlassCard extends HTMLElement {
       const isOff = target <= offTemp + 0.01;
       const demand = this._demand(item, entityId);
       const hasDemand = Number.isFinite(demand);
-      const valveOpen = !isOff && (hasDemand ? demand >= this._demandThreshold : true);
+      const action = state.attributes.hvac_action;
+      const valveOpen = !isOff && (hasDemand ? demand >= this._demandThreshold : action === "heating");
       let modeLabel;
       if (isOff) modeLabel = esc(this._t("off"));
-      else if (!hasDemand) modeLabel = esc(this._t("heating"));
+      else if (!hasDemand && action) modeLabel = esc(this._actionText(state));
+      else if (!hasDemand) modeLabel = esc(this._t("on"));
       else if (demand <= 0) modeLabel = esc(this._t("valveClosed"));
       else modeLabel = '<span class="' + (valveOpen ? "valve-open" : "") + '">' + esc(this._t("valve")) + " " + Math.round(demand) + " %</span>";
       const sub = current != null ? (modeLabel + " &middot; " + esc(this._num(current)) + "&nbsp;&deg;C") : modeLabel;
