@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/30187789/README.md)
 # Thermostat Glass Card
 
 A frosted-glass ("Liquid Glass") styled thermostat widget for Home Assistant
