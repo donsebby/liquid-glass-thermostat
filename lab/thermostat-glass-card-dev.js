@@ -313,6 +313,14 @@ class ThermostatGlassCard extends HTMLElement {
     return cfg || ("sensor." + entityId.split(".")[1] + "_pi_heating_demand");
   }
 
+  _num(value, fixed) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return String(value);
+    const lang = this._hass?.locale?.language || this._hass?.language || "de";
+    const opts = fixed != null ? { minimumFractionDigits: fixed, maximumFractionDigits: fixed } : { maximumFractionDigits: 1 };
+    try { return n.toLocaleString(lang, opts); } catch (e) { return fixed != null ? n.toFixed(fixed) : String(n); }
+  }
+
   _demand(item, entityId) {
     const st = this._hass.states[this._demandId(item, entityId)];
     return st ? parseFloat(st.state) : NaN;
@@ -382,7 +390,7 @@ class ThermostatGlassCard extends HTMLElement {
       else if (!hasDemand) modeLabel = esc(this._t("heating"));
       else if (demand <= 0) modeLabel = esc(this._t("valveClosed"));
       else modeLabel = '<span class="' + (valveOpen ? "valve-open" : "") + '">' + esc(this._t("valve")) + " " + Math.round(demand) + " %</span>";
-      const sub = current != null ? (modeLabel + " &middot; " + esc(current) + "&deg;C") : modeLabel;
+      const sub = current != null ? (modeLabel + " &middot; " + esc(this._num(current)) + "&nbsp;&deg;C") : modeLabel;
       const tintRgb = ThermostatGlassCard._colorRgb(iconColor);
       const status = this._status(item);
       return { entityId, name, sub, target, isOff, valveOpen, tintRgb, offTemp, fallbackOn, status };
@@ -409,7 +417,7 @@ class ThermostatGlassCard extends HTMLElement {
             </div>
             <div class="controls">
               <div class="btn minus">${ThermostatGlassCard._icon(ICON_MINUS, 12)}</div>
-              <div class="temp">${Number(it.target).toFixed(1)}</div>
+              <div class="temp">${esc(this._num(it.target, 1))}</div>
               <div class="btn plus">${ThermostatGlassCard._icon(ICON_PLUS, 12)}</div>
               <div class="btn power ${it.isOff ? "" : "active"}">${ThermostatGlassCard._icon(ICON_POWER, 13)}</div>
             </div>
