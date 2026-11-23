@@ -51,6 +51,8 @@ step: 0.5
 | `tile_shade` | number | `15` | Tile background brightness, -100 (darker) to 100 (lighter) |
 | `panel_shade` | number | `6` | Panel background brightness, -100 (darker) to 100 (lighter) |
 | `demand_threshold` | number | `10` | Valve opening (%) from which a tile counts as "heating" (badge and valve text light up) |
+| `frame` | boolean | `true` | `false` removes the outer glass panel (background, border, blur, padding), so the tiles sit directly on the background behind – useful inside pop-ups |
+| `glow` | boolean | `true` | `false` gives a calmer look: no tile drop shadow, active tiles get only a subtle tinted border instead of the glow, weaker icon glow |
 
 ### Per-entity options (inside `entities`)
 
@@ -81,6 +83,11 @@ lg-backdrop: blur(22px) saturate(180%)   # blur/saturation behind the panel
 Without them nothing changes. Options set on the card itself (e.g. `blur`) still win.
 
 ## Changelog
+
+### 1.2.0
+- New option `frame: false`: no outer panel, the tiles sit directly on the background (e.g. inside pop-ups).
+- New option `glow: false`: calm look without drop shadows and glows; active tiles only get a subtle tinted border.
+- The status line (`status_entity`) shows the state as formatted by Home Assistant, so translated states (e.g. of `enum`/`select` entities) appear in the user's language. `reset_when` and `window_prefix` keep matching the raw state.
 
 ### 1.1.0
 - Reads the optional theme variables `--lg-radius` and `--lg-backdrop` (see *Theme variables*).

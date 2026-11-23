@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.2.0";
 // eslint-disable-next-line no-console
 console.info(`%c THERMOSTAT-GLASS-CARD %c v${CARD_VERSION} `, "color: white; background: #e2835a; font-weight: 700;", "color: #e2835a; background: white; font-weight: 700;");
 
@@ -153,6 +153,16 @@ class ThermostatGlassCard extends HTMLElement {
         -webkit-backdrop-filter: ${backdrop};
         border: 1px solid rgba(255,255,255,0.05);
       }
+      /* frame: false - no panel, tiles sit directly on the background (e.g. in pop-ups) */
+      .wrap.frameless {
+        padding:0;
+        border-radius:0;
+        background:none;
+        backdrop-filter:none;
+        -webkit-backdrop-filter:none;
+        border:none;
+        box-shadow:none;
+      }
       .title { display:flex; align-items:center; gap:8px; color:var(--secondary-text-color, rgba(255,255,255,0.7)); font-size:14px; font-weight:600; margin-bottom:12px; }
       .title svg { fill:currentColor; opacity:0.85; }
       .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
@@ -174,6 +184,13 @@ class ThermostatGlassCard extends HTMLElement {
       .icon-wrap { position:relative; width:36px; height:36px; flex:0 0 auto; }
       .icon-glow { position:absolute; inset:-8px; border-radius:50%; background:radial-gradient(circle, rgba(var(--tile-tint-rgb, 154,163,173),0.65), transparent 70%); filter:blur(7px); }
       .icon-glow.off { background:radial-gradient(circle, rgba(140,150,160,0.3), transparent 70%); }
+      /* glow: false - calm look without drop shadow and outer glows */
+      .wrap.calm .tile { box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
+      .wrap.calm .tile.active {
+        border: 1px solid rgba(var(--tile-tint-rgb, 154,163,173),0.35);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      }
+      .wrap.calm .icon-glow { opacity:0.45; }
       .icon-glass {
         position:relative; width:36px; height:36px; border-radius:50%;
         background: linear-gradient(155deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.22) 45%, rgba(255,255,255,0.4) 100%);
@@ -232,7 +249,9 @@ class ThermostatGlassCard extends HTMLElement {
     `;
     this.shadowRoot.appendChild(style);
     this._root = document.createElement("div");
-    this._root.className = "wrap";
+    this._root.className = "wrap"
+      + (this._config.frame === false ? " frameless" : "")
+      + (this._config.glow === false ? " calm" : "");
     this.shadowRoot.appendChild(this._root);
   }
 
@@ -307,14 +326,29 @@ class ThermostatGlassCard extends HTMLElement {
     if (typeof item === "string" || !item.status_entity) return null;
     const st = this._hass.states[item.status_entity];
     if (!st || st.state === "unavailable" || st.state === "unknown") return null;
-    const text = st.state;
+    const raw = st.state;
+    // Shown in HA's language (enum/select states get translated); prefixes
+    // still match the raw state, so existing reset_when/window_prefix work.
+    const text = this._formatState(st);
+    const starts = (prefix) => raw.startsWith(prefix) || text.startsWith(prefix);
     const resetWhen = item.reset_when ?? this._t("manual");
     const windowPrefix = item.window_prefix ?? this._t("window");
-    const canReset = !!item.reset_action && text.startsWith(resetWhen);
+    const canReset = !!item.reset_action && starts(resetWhen);
     let cls = "";
-    if (text.startsWith(resetWhen)) cls = "manual";
-    else if (text.startsWith(windowPrefix)) cls = "window";
+    if (starts(resetWhen)) cls = "manual";
+    else if (starts(windowPrefix)) cls = "window";
     return { text, cls, canReset, resetAction: item.reset_action, resetLabel: item.reset_label ?? this._t("reset") };
+  }
+
+  // Localized entity state via HA's formatter (2023.9+), raw state as fallback.
+  _formatState(stateObj) {
+    if (typeof this._hass.formatEntityState === "function") {
+      try {
+        const s = this._hass.formatEntityState(stateObj);
+        if (s != null && s !== "") return String(s);
+      } catch (e) {}
+    }
+    return stateObj.state;
   }
 
   _render() {
