@@ -53,6 +53,7 @@ step: 0.5
 | `demand_threshold` | number | `10` | Valve opening (%) from which a tile counts as "heating" (badge and valve text light up) |
 | `frame` | boolean | `true` | `false` removes the outer glass panel (background, border, blur, padding), so the tiles sit directly on the background behind – useful inside pop-ups |
 | `glow` | boolean | `true` | `false` gives a calmer look: no tile drop shadow, active tiles get only a subtle tinted border instead of the glow, weaker icon glow |
+| `look` | string | `glass` | `solid` switches to calm solid tiles without glass, blur or glows, see *Solid look* |
 
 ### Per-entity options (inside `entities`)
 
@@ -70,6 +71,28 @@ step: 0.5
 | `reset_label` | string | Chip label (default `↺ Plan` / `↺ Schedule`) |
 | `window_prefix` | string | Status text prefix shown in blue (default `Fenster` / `Window`) |
 
+## Solid look
+
+`look: solid` replaces the glass with quiet, solid surfaces — for dashboards whose page background already does the visual work:
+
+- **Panel:** solid surface (`--surface`, default the theme's card colour at 88 %), thin 1 px edge, `--lg-radius` corners (default 20 px), no blur. `frame: false` still removes it.
+- **Tiles:** solid inner surface (`--lg-tile-bg`), no shadows, no gradients and no glows (whatever `glow` says). A tile that is on is tinted with its `icon_color` (warm orange when none is set) and its icon sits in a round circle filled with that colour; off tiles stay neutral with a grey icon circle.
+- **Buttons:** flat, fully round buttons without glass edges; the power icon takes the tile colour while the thermostat is on. Each button has a 44 px tall tap area; on very narrow tiles (small phones) the buttons get a little smaller so all four still fit.
+- Larger text (names 15 px, details 13 px), tabular numbers for the target temperature.
+- `tile_shade`, `panel_shade`, `blur`, `saturate` and `bg_opacity` have no effect in this look.
+- `prefers-reduced-motion` is respected.
+
+```yaml
+type: custom:thermostat-glass-card
+look: solid
+entities:
+  - entity: climate.living_room
+    icon_color: teal
+  - climate.bathroom
+```
+
+The visual editor offers it as *Stil: Glas / Solide*.
+
 ## Theme variables
 
 Like the other Liquid Glass cards, this card reads two optional CSS variables, so one theme can align all of them:
@@ -83,6 +106,9 @@ lg-backdrop: blur(22px) saturate(180%)   # blur/saturation behind the panel
 Without them nothing changes. Options set on the card itself (e.g. `blur`) still win.
 
 ## Changelog
+
+### 1.3.0
+- New option `look: solid`: calm solid tiles without glass, blur or glows; tiles that are on are tinted with their colour and get a filled icon circle, flat round buttons. Uses the optional design tokens `--surface` and `--lg-tile-bg` (see *Solid look*). Without the option the card looks exactly as before.
 
 ### 1.2.1
 - Without a valve sensor the tile now shows the thermostat's own `hvac_action` as Home Assistant translates it (e.g. "Heizen", "Leerlauf") instead of always "Heating". Thermostats that report neither show a neutral "On"; the heat badge then stays dark instead of claiming the valve is open.
