@@ -110,6 +110,9 @@ Without them nothing changes. Options set on the card itself (e.g. `blur`) still
 
 ## Changelog
 
+### Unreleased
+- Solid look: inner surfaces take their edge and shadow from the theme (`--lg-tile-edge`, `--lg-tile-shadow`), so a glass theme can give them a light glass edge.
+
 ### 1.3.0
 - The look can come from the theme: `lg-look: solid` (CSS variable `--lg-look`) switches the card to the solid look when it has no `look` of its own; `look: glass` / `look: solid` on the card overrides it. Re-checked on theme/dark-mode changes and on the `lg-theme-changed` window event.
 - New option `look: solid`: calm solid tiles without glass, blur or glows; tiles that are on are tinted with their colour and get a filled icon circle, flat round buttons. Uses the optional design tokens `--surface` and `--lg-tile-bg` (see *Solid look*). Without the option the card looks exactly as before.
