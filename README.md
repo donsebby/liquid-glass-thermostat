@@ -111,6 +111,7 @@ Without them nothing changes. Options set on the card itself (e.g. `blur`) still
 ## Changelog
 
 ### Unreleased
+- Solid look: round buttons take edge and shadow from the theme too.
 - Solid look: the panel takes its fill from `--lg-tile-bg` when the theme sets it (glass solid look).
 - Solid look: the card's own panel takes edge, shadow and blur from the theme (`--lg-tile-edge`, `--lg-tile-shadow`, `--lg-panel-backdrop`).
 - Solid look: inner surfaces take their edge and shadow from the theme (`--lg-tile-edge`, `--lg-tile-shadow`), so a glass theme can give them a light glass edge.
