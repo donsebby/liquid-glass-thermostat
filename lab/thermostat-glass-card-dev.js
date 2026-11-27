@@ -356,8 +356,8 @@ class ThermostatGlassCard extends HTMLElement {
       .wrap.solid .controls { margin-top:2px; container-type:inline-size; }
       .wrap.solid .btn {
         position:relative; width:32px; height:32px; border-radius:999px;
-        background: color-mix(in srgb, var(--tgc-ink) 14%, transparent);
-        border:none; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none;
+        background: color-mix(in srgb, var(--tgc-ink) 14%, transparent); box-sizing:border-box;
+        border:var(--lg-tile-edge, none); box-shadow:var(--lg-tile-shadow, none); backdrop-filter:none; -webkit-backdrop-filter:none;
         transition: background .15s ease;
       }
       /* invisible hit area: 44px tall without touching the neighbours */
