@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.3.0";
+const CARD_VERSION = "1.4.0";
 // eslint-disable-next-line no-console
 console.info(`%c THERMOSTAT-GLASS-CARD %c v${CARD_VERSION} `, "color: white; background: #e2835a; font-weight: 700;", "color: #e2835a; background: white; font-weight: 700;");
 
