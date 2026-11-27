@@ -336,10 +336,10 @@ class ThermostatGlassCard extends HTMLElement {
       .wrap.solid .tile {
         --c: var(--tile-tint, #e2835a);
         background: var(--tgc-tile);
-        border:1px solid rgba(255,255,255,0.04); border-radius:calc(var(--lg-radius, 20px) - 4px);
-        padding:12px 10px; box-shadow:none; transition: background .2s ease;
+        border:var(--lg-tile-edge, 1px solid rgba(255,255,255,0.04)); border-radius:calc(var(--lg-radius, 20px) - 4px);
+        padding:12px 10px; box-shadow:var(--lg-tile-shadow, none); transition: background .2s ease;
       }
-      .wrap.solid .tile.active { border:1px solid rgba(255,255,255,0.04); box-shadow:none;
+      .wrap.solid .tile.active { border:var(--lg-tile-edge, 1px solid rgba(255,255,255,0.04)); box-shadow:var(--lg-tile-shadow, none);
         background: color-mix(in srgb, var(--c) 20%, var(--tgc-tile)); }
       .wrap.solid .row { gap:10px; }
       .wrap.solid .icon-glow { display:none; }
